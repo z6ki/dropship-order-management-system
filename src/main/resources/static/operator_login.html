@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Operator Login | Apex DropShip</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+
+<div class="bg-white rounded-lg shadow-lg p-8 max-w-sm w-full">
+    <h2 class="text-2xl font-bold mb-4 text-center text-red-700">Operator Login</h2>
+    <form id="login-form" class="space-y-4">
+        <div>
+            <label for="apiKey" class="block mb-2 text-sm font-medium text-gray-700">Operator API Key</label>
+            <input type="password" id="apiKey" required
+                class="w-full border border-gray-300 rounded-md p-2 focus:ring-red-700 focus:border-red-700" 
+                placeholder="Enter API Key (e.g. 3142868)">
+        </div>
+        <button type="submit"
+            class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition">
+            Login
+        </button>
+    </form>
+    <div id="loginMsg" class="mt-3 text-center text-red-600 font-semibold"></div>
+</div>
+
+<script>
+document.getElementById('login-form').onsubmit = function(event) {
+    event.preventDefault();
+    const apiKey = document.getElementById('apiKey').value.trim();
+    if (apiKey === "") {
+        document.getElementById("loginMsg").textContent = "API Key required!";
+        return;
+    }
+    if (apiKey === "3142868") { // You can fetch valid values from the server if needed
+        sessionStorage.setItem('operatorApiKey', apiKey);
+        window.location.href = 'operator_client.html';
+    } else {
+        document.getElementById("loginMsg").textContent = "Invalid API Key!";
+    }
+};
+</script>
+</body>
+</html>

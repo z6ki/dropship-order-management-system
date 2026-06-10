@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Operator Management Portal | Apex DropShip</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f0f4f8; }
+        .log-output { min-height: 120px; }
+        .btn-primary { transition: all 0.2s; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -2px rgba(0,0,0,.06); }
+    </style>
+</head>
+<body class="p-0 m-0 min-h-screen bg-gray-100">
+
+<div class="w-full min-h-screen bg-white shadow-none px-0 flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-red-700 text-white py-6 px-4 md:px-8 rounded-none flex justify-between items-center flex-wrap">
+        <div>
+            <h1 class="text-3xl font-bold">Apex DropShip Operator Management</h1>
+            <p class="text-red-200 mt-1">Secured Access for Order, Price, and Revenue Control</p>
+        </div>
+        <a href="customer_client.html"
+           class="bg-red-500 hover:bg-red-400 text-white text-sm font-medium py-2 px-4 rounded-lg transition duration-150 ease-in-out mt-4 md:mt-0">
+            Go to Customer Portal
+        </a>
+    </header>
+
+    <div class="w-full flex-grow flex flex-col p-4 md:p-8 space-y-8">
+
+        <!-- Authentication Status -->
+        <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-300 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div class="flex items-center gap-2">
+                <span class="text-yellow-600 text-xl"></span>
+                <span id="authStatus" class="font-semibold text-gray-800">Checking credentials...</span>
+            </div>
+            <button onclick="clearTokenAndLogout()" class="text-sm text-red-600 hover:text-red-800 underline mt-2 md:mt-0">
+                Logout / Clear Credentials
+            </button>
+        </div>
+
+        <!-- Section 1: Pending Orders -->
+        <section class="bg-yellow-50 p-5 rounded-lg border border-yellow-300 mb-8">
+            <h3 class="text-xl font-semibold text-yellow-700 mb-3 flex items-center gap-2">
+                <span></span> Pending Orders
+            </h3>
+            <div id="pendingOrdersContainer" class="space-y-2"></div>
+            <button id="shipAllBtn" onclick="shipAllPendingOrders()" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 px-4 rounded font-semibold">
+                Ship All Pending Orders
+            </button>
+        </section>
+
+        <!-- Section 2: Total Revenue & Profit -->
+        <section class="bg-gray-50 p-5 rounded-lg border border-gray-200 shadow-sm mb-8">
+            <h3 class="text-xl font-semibold text-green-700 flex items-center gap-2 mb-4">
+                <span class="text-green-600 text-xl"></span> Customer Revenue & Profit
+            </h3>
+            <div class="flex items-center gap-2 mb-3">
+                <label for="revCustomerId" class="text-sm font-medium text-gray-700 whitespace-nowrap">Customer:</label>
+                <select id="revCustomerId" class="shadow-sm sm:text-sm border-gray-300 rounded-md p-2 w-40">
+                    <option value="1001">1001 (Ironman)</option>
+                    <option value="1002">1002 (Hulk)</option>
+                    <option value="1003">1003 (Spiderman)</option>
+                    <option value="1004">1004 (Thor)</option>
+                    <option value="1005">1005 (Captain America)</option>
+                </select>
+                <button onclick="viewCustomerRevenue()" class="btn-primary bg-indigo-600 hover:bg-indigo-700 text-white rounded-md p-2 flex-grow">
+                    Show Selected Revenue
+                </button>
+                <button onclick="viewCustomerProfit()" class="btn-primary bg-yellow-600 hover:bg-yellow-700 text-white rounded-md p-2 flex-grow">
+                    Show Selected Profit
+                </button>
+            </div>
+            <button onclick="viewAllCustomerRevenues()" class="w-full bg-green-600 hover:bg-green-700 text-white rounded-md p-2 mb-3">
+                Show All Customer Revenue & Profit
+            </button>
+            <div id="allCustomerRevenuesList" class="mt-2"></div>
+        </section>
+
+        <!-- Section 3: Fulfillment & Pricing -->
+        <section class="bg-gray-50 p-5 rounded-lg border border-gray-200 shadow-sm">
+            <h3 class="text-xl font-semibold text-blue-700 flex items-center gap-2 mb-4">
+                <span class="text-blue-600 text-xl"></span> Fulfillment & Pricing
+            </h3>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Update Order Status:</label>
+                <div class="flex flex-col sm:flex-row gap-2 mb-4">
+                    <input type="number" id="updateOrderId" placeholder="Order ID"
+                        class="shadow-sm sm:text-sm border-gray-300 rounded-md p-2 w-24" />
+                    <button onclick="updateStatus('Shipped')" class="btn-primary flex-grow bg-blue-500 hover:bg-blue-600 text-white rounded-md p-2">
+                        Set Status: Shipped
+                    </button>
+                    <button onclick="updateStatus('Out of Stock')" class="btn-primary flex-grow bg-red-500 hover:bg-red-600 text-white rounded-md p-2">
+                        Set Status: Out of Stock
+                    </button>
+                </div>
+				<label class="block text-sm font-medium text-gray-700 mb-1">Update Retail Price:</label>
+				<div class="flex gap-2">
+				    <!-- Product dropdown, filled dynamically -->
+				    <select id="updateProductIdDropdown" class="shadow-sm sm:text-sm border-gray-300 rounded-md p-2 w-40"></select>
+				    <!-- New price input -->
+				    <input type="number" id="newPrice" placeholder="New Price (AED)"
+				        class="shadow-sm sm:text-sm border-gray-300 rounded-md p-2 flex-grow" />
+				    <button onclick="updatePrice()" class="btn-primary bg-purple-600 hover:bg-purple-700 text-white rounded-md p-2">
+				        Update Price
+				    </button>
+				</div>
+            </div>
+        </section>
+
+        <!-- Output Log / Alert style -->
+        <div id="outputSection" class="w-full flex flex-col">
+            <div id="apiAlert" class="hidden rounded-md p-3 mb-4 font-bold" aria-live="polite"></div>
+            <pre id="output" class="log-output text-green-500 text-sm bg-gray-100 p-3 rounded border border-gray-200 overflow-auto"></pre>
+        </div>
+    </div>
+</div>
+
+<script>
+const API_BASE = '/api/operator';// base url for all secure api calls
+const output = document.getElementById('output');// dom element for the detailed output log
+const apiAlert = document.getElementById('apiAlert');// dom element for the alert notification box
+const authStatus = document.getElementById('authStatus');// dom element showing authentication status
+let currentApiKey = '';// variable to hold the api key for secure fetches
+let allOrders = [];// array to store all fetched order
+
+// function to handle logging messages and displaying alert notifications
+function log(message, isError = false) {
+    output.textContent = message;
+	// make the alert box styling based on whether it is an error
+    apiAlert.className = 'rounded-md p-3 mb-4 font-bold ' +
+        (isError ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-green-100 text-green-700 border border-green-200');
+	// set only the first line of the message to the alert box
+    apiAlert.textContent = message.split('\n')[0];
+	// show the alert box
+    apiAlert.classList.remove('hidden');
+	// hide the alert box after a short delay
+    setTimeout(() => { apiAlert.classList.add('hidden'); }, 3500);
+}
+// function that runs on page load to check for and load the api key
+function loadApiKey() {
+	// get the api key from the browser's session storage
+    const apiKey = sessionStorage.getItem('operatorApiKey');
+    if (apiKey) {
+		// set the global api key variable
+        currentApiKey = apiKey;
+		// update the ui to show authenticated status
+        authStatus.textContent = 'Status: Authenticated (API key loaded from session).';
+        authStatus.classList.remove('text-red-600');
+        authStatus.classList.add('text-green-600');
+        viewAllOrders();
+        loadAndDisplayPendingOrders();
+        loadProductDropdown();
+    } else {
+		// update the ui to show unauthenticated status
+        authStatus.textContent = 'Status: Unauthenticated. Redirecting to login...';
+        authStatus.classList.add('text-red-600');
+		// automatically redirect to the login page after a delay
+        setTimeout(() => {
+			// redirect the user to the login page
+            window.location.href = 'operator_login.html';
+        }, 1000);
+    }
+}
+// function to clear credentials and redirect to login page
+function clearTokenAndLogout() {
+    sessionStorage.removeItem('operatorApiKey');
+	// set a message to be displayed on the login page
+    sessionStorage.setItem('auth_message', 'Logged out successfully.');
+	// redirect the user to the login page
+    window.location.href = 'operator_login.html';
+}
+// function to handle secure api fetching by adding the api key header
+async function secureFetch(url, options = {}) {
+	// check if the api key is present before proceeding
+    if (!currentApiKey) {
+        log('[AUTH ERROR] API key missing. Please re-login.', true);
+        return { status: 401, data: async () => ({ error: "API key missing." }) };
+    }
+	// append the required x-api-key header to the request
+    options.headers = { ...options.headers, 'X-API-KEY': currentApiKey };
+    const response = await fetch(url, options);
+	// handle authentication failure responses
+    if (response.status === 401 || response.status === 403) {
+        log(`[AUTH FAIL] Status ${response.status}. API key rejected. Please re-login.`, true);
+		// update the ui to reflect the authentication failure
+        authStatus.textContent = 'Status: API Key Rejected/Expired.';
+        authStatus.classList.add('text-red-600');
+    }
+	// handle successful no content responses
+    if (response.status === 204) {
+         return { status: 204, data: async () => ({ message: '204 NO CONTENT (Success)' }) };
+    }
+	// attempt to parse the json response body
+    try {
+        const data = await response.json();
+		// return the status and a function to retrieve the parsed json data
+        return { status: response.status, data: async () => data };
+    } catch (error) {
+        return { status: response.status, data: async () => ({ error: 'No response body or invalid JSON.' }) };
+    }
+}
+
+// Fetch first 10 products and fill price dropdown
+async function loadProductDropdown() {
+    const { status, data } = await secureFetch("/api/products");
+    if (status === 200) {
+		// wait for the product list data to be returned
+        const productList = await data();
+		// get the dropdown element
+        const dropdown = document.getElementById('updateProductIdDropdown');
+        if (dropdown) {
+			// map the product list to html option elements for the dropdown
+			dropdown.innerHTML = productList.map(p => `<option value="${p.id}">${p.id} - ${p.description}</option>`).join('');
+        } else {
+            log("Could not load products for price update.", true);
+        }
+    }
+}
+
+// Pending Orders section
+async function loadAndDisplayPendingOrders() {
+	// fetch all orders from the api
+    const { status, data } = await secureFetch(`${API_BASE}/orders`);
+	// extract order list or default to empty array
+    const orders = status === 200 ? await data() : [];
+    allOrders = orders;
+	// filter the fetched orders to find pending ones
+    const pendingOrders = orders.filter(o => o.status === 'Pending');
+    const container = document.getElementById('pendingOrdersContainer');
+	// check if there are no pending orders
+    if (pendingOrders.length === 0) {
+        container.innerHTML = '<p class="text-gray-500">No pending orders.</p>';
+		// disable the ship all button
+        document.getElementById('shipAllBtn').disabled = true;
+        return;
+    }
+	// enable the ship all button
+    document.getElementById('shipAllBtn').disabled = false;
+	// render the list of pending orders with individual ship buttons
+    container.innerHTML = pendingOrders.map(o => `
+        <div class="flex gap-3 items-center bg-white border border-yellow-200 rounded p-2">
+            <span>Order <b>#${o.orderId}</b> (Customer: ${o.customerId}, Product: ${o.productId}, Qty: ${o.quantity})</span>
+            <button onclick="shipOrder(${o.orderId})" class="ml-auto bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1 rounded">Ship</button>
+        </div>
+    `).join('');
+}
+// function to update a single order status to shipped
+async function shipOrder(orderId) {
+    log(`Shipping order #${orderId}...`);
+    const { status } = await secureFetch(`${API_BASE}/orders/${orderId}/status?newStatus=Shipped`, { method: 'PUT' });
+    if (status === 204) {
+        log(`Order #${orderId} shipped!`);
+        await loadAndDisplayPendingOrders();
+        await viewAllOrders();
+    } else {
+        log(`Failed to ship order #${orderId}`, true);
+    }
+}
+// function to update all pending orders to shipped
+async function shipAllPendingOrders() {
+    log('Shipping all pending orders...');
+	// filter the global order list for pending orders
+    const pending = allOrders.filter(o => o.status === 'Pending');
+    for (const o of pending) {
+        await secureFetch(`${API_BASE}/orders/${o.orderId}/status?newStatus=Shipped`, { method: 'PUT' });
+    }
+	// reload data sections after batch update
+    await loadAndDisplayPendingOrders();
+    await viewAllOrders();
+    log('All pending orders shipped!');
+}
+// fetches and displays all orders in the main output console
+async function viewAllOrders() {
+    log('[INFO] Fetching all orders...');
+    const { status, data } = await secureFetch(`${API_BASE}/orders`);
+    const json = await data();// wait for the json data
+    if (status === 200) {
+        output.textContent = JSON.stringify(json, null, 2);// changed to raw json data for output
+        log('Loaded all orders successfully.');
+    } else {
+        log(`[ERROR] Status: ${status}\n${JSON.stringify(json, null, 2)}`, true);
+    }
+}
+// fetches total revenue for a single selected customer
+async function viewCustomerRevenue() {
+	// get the selected customer id from the dropdown
+    const customerId = document.getElementById('revCustomerId').value;
+    log(`[INFO] Fetching revenue for Customer ${customerId}...`);
+	// send secure fetch request
+    const { status, data } = await secureFetch(`${API_BASE}/customers/${customerId}/revenue`);
+	// wait for the json data
+    const json = await data();
+    if (status === 200) {
+		// display revenue in the output console
+        output.textContent = `Total Revenue for Customer ${customerId}: AED ${json.toFixed(2)}`;
+        log(`[SUCCESS] Total Revenue for Customer ${customerId}: AED ${json.toFixed(2)}`);
+    } else {
+        log(`[ERROR] Status: ${status}\n${JSON.stringify(json, null, 2)}`, true);
+    }
+}
+// handles updating the status of a single order
+async function updateStatus(newStatus) {
+	// get the order id to update
+    const orderId = document.getElementById('updateOrderId').value;
+    if (!orderId) return log('[WARNING] Please enter an Order ID.', true);
+    log(`[INFO] Updating Order ${orderId} status to '${newStatus}'...`);
+	// send a put request to update the order status
+    const { status, data } = await secureFetch(`${API_BASE}/orders/${orderId}/status?newStatus=${encodeURIComponent(newStatus)}`, { method: 'PUT' });
+    const json = await data();
+    if (status === 204) {
+        log(`Order ${orderId} status changed to ${newStatus}.`);
+		// reload data
+        viewAllOrders();
+        loadAndDisplayPendingOrders();
+        document.getElementById('updateOrderId').value = '';
+    } else {
+        log(`[ERROR] Status: ${status}\n${JSON.stringify(json, null, 2)}`, true);
+    }
+}
+
+// Update price for selected product
+async function updatePrice() {
+	// get the selected product id and the new price value
+    const productId = document.getElementById('updateProductIdDropdown').value;
+    const newPrice = document.getElementById('newPrice').value;
+
+    if (!productId || !newPrice) {
+        log("Please select a product and enter new price.", true);
+        return;
+    }
+
+    log(`Updating price for ${productId} to AED ${newPrice}...`);
+	// send a put request to the price update endpoint
+	const { status, data } = await secureFetch(`${API_BASE}/products/${productId}/price?newPrice=${encodeURIComponent(newPrice)}`, {method: "PUT"});
+
+    if (status === 204) {
+        log(`Price for ${productId} updated successfully to AED ${newPrice}.`);
+        document.getElementById('newPrice').value = "";
+        loadProductDropdown(); // reload updated product list
+    } else {
+        const json = await data;
+        log(`ERROR ${status}: ${JSON.stringify(json)}`, true);
+    }
+}
+
+// fetches total profit for a single selected customer
+async function viewCustomerProfit() {
+    const customerId = document.getElementById('revCustomerId').value;
+    log(`[INFO] Fetching profit for Customer ${customerId}...`);
+	// send secure fetch request
+    const { status, data } = await secureFetch(`${API_BASE}/customers/${customerId}/profit`);
+	// wait for the profit value
+    const profit = await data();
+    if (status === 200) {
+		// display the formatted profit in the output console
+        output.textContent = `Total Profit for Customer ${customerId}: AED ${profit.toFixed(2)}`;
+        log(`[SUCCESS] Total Profit for Customer ${customerId}: AED ${profit.toFixed(2)}`);
+    } else {
+        log(`[ERROR] Status: ${status} fetching profit`, true);
+    }
+}
+// fetches and displays total revenue and profit for all customers
+async function viewAllCustomerRevenues() {
+	// get the list container element
+    const listDiv = document.getElementById('allCustomerRevenuesList');
+    listDiv.innerHTML = "<div class='text-gray-500'>Loading revenues and profits...</div>";
+	// array to hold revenue and profit data for each customer
+    const customersData = [];
+
+    let totalRevenue = 0;
+    let totalProfit = 0;
+
+    for (const c of knownCustomers) {
+		// start fetching revenue and profit concurrently using promise.all
+        const revenuePromise = secureFetch(`${API_BASE}/customers/${c.id}/revenue`);
+        const profitPromise = secureFetch(`${API_BASE}/customers/${c.id}/profit`);
+
+        const [revenueRes, profitRes] = await Promise.all([revenuePromise, profitPromise]);
+
+        let revenueValue = 0;
+        let profitValue = 0;
+		// process the revenue response
+        if (revenueRes.status === 200) {
+            revenueValue = await revenueRes.data();
+            log(`[SUCCESS] Revenue for Customer ${c.id} (${c.name}): AED ${revenueValue.toFixed(2)}`);
+        } else {
+            log(`[ERROR] Failed to fetch revenue for Customer ${c.id} (${c.name})`);
+        }
+		// process the profit response
+        if (profitRes.status === 200) {
+            profitValue = await profitRes.data();
+            log(`[SUCCESS] Profit for Customer ${c.id} (${c.name}): AED ${profitValue.toFixed(2)}`);
+        } else {
+            log(`[ERROR] Failed to fetch profit for Customer ${c.id} (${c.name})`);
+        }
+		// accumulate totals
+        totalRevenue += revenueValue;
+        totalProfit += profitValue;
+		// store individual customer data
+        customersData.push({
+            id: c.id,
+            name: c.name,
+            revenue: revenueValue,
+            profit: profitValue
+        });
+    }
+	// render the combined data in an html table
+    listDiv.innerHTML = `
+        <table class="min-w-full mt-3">
+            <thead>
+                <tr class="border-b">
+                    <th class="text-left p-2">Customer</th>
+                    <th class="text-left p-2">Revenue (AED)</th>
+                    <th class="text-left p-2">Profit (AED)</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${customersData.map(c => `<tr>
+                    <td class="p-2 font-semibold">${c.id} (${c.name})</td>
+                    <td class="p-2">${c.revenue.toFixed(2)}</td>
+                    <td class="p-2">${c.profit.toFixed(2)}</td>
+                </tr>`).join('')}
+                <tr class="border-t font-bold">
+                    <td class="p-2">TOTAL</td>
+                    <td class="p-2">${totalRevenue.toFixed(2)}</td>
+                    <td class="p-2">${totalProfit.toFixed(2)}</td>
+                </tr>
+            </tbody>
+        </table>
+    `;
+
+    log("All customer revenues and profits loaded with totals.");
+}
+// list of known customers for iterating and fetching data
+const knownCustomers = [
+    { id: "1001", name: "Ironman" },
+    { id: "1002", name: "Hulk" },
+    { id: "1003", name: "Spiderman" },
+    { id: "1004", name: "Thor" },
+    { id: "1005", name: "Captain America" }
+];
+
+// load api key and fill dropdown on page load
+window.onload = loadApiKey;
+</script>
+</body>
+</html>

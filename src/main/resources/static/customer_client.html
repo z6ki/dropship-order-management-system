@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Customer Order Portal | Apex DropShip</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #e5e7eb; }
+        .log-output { min-height: 120px; }
+        .product-card { transition: transform 0.2s, box-shadow 0.2s; }
+        .product-card:hover { transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body class="p-0 m-0 min-h-screen bg-gray-100">
+
+<div class="w-full min-h-screen flex flex-col">
+
+    <header class="w-full bg-indigo-700 text-white py-6 px-4 md:px-8 flex justify-between items-center flex-wrap">
+        <div>
+            <h1 class="text-3xl font-bold">Apex DropShIp</h1>
+            <p class="text-indigo-200 mt-1">Your RESTful E-Commerce Portal</p>
+        </div>
+        <a href="operator_login.html"
+           class="bg-indigo-500 hover:bg-indigo-400 text-white text-sm font-medium py-2 px-4 rounded-lg transition duration-150 ease-in-out mt-4 md:mt-0">
+            Go to Operator Portal
+        </a>
+    </header>
+
+	<div class="w-full flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-300 px-4 py-2 bg-white">
+	    <!-- Left: Filter -->
+	    <div class="flex flex-col items-start w-full md:w-1/4">
+	        <label for="priceSort" class="block text-sm font-medium text-gray-700">Sort</label>
+	        <select id="priceSort"
+	            class="border border-gray-300 p-2 rounded-md text-sm mt-1 w-full"
+	            onchange="filterProducts()">
+	            <option value="">Sort by Price...</option>
+	            <option value="lowhigh">Lowest to Highest</option>
+	            <option value="highlow">Highest to Lowest</option>
+	        </select>
+	    </div>
+	    <!-- Center: Search -->
+	    <div class="flex flex-col items-center w-full md:w-2/4">
+	        <label for="productSearch" class="block text-sm font-medium text-gray-700">Search Products</label>
+	        <input type="text" id="productSearch" placeholder="Search products by description..."
+	            class="w-full rounded-md border border-gray-300 p-2 shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+	            oninput="filterProducts()" />
+	    </div>
+	    <!-- Right: Customer -->
+	    <div class="flex flex-col items-end w-full md:w-1/4">
+	        <label for="customerId" class="block text-sm font-medium text-gray-700 mb-1">Current Customer</label>
+	        <select id="customerId" onchange="listProducts(); viewOrders()"
+	            class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm"
+	            disabled>
+	            <option value="" disabled selected>Loading Customers...</option>
+	        </select>
+	    </div>
+	</div>
+
+    <main class="flex-grow flex flex-col space-y-8 px-0 py-4 w-full">
+        <section class="w-full py-2 bg-white">
+            <h3 class="text-xl font-semibold text-gray-700 mb-4 px-4 flex items-center">
+                <span class="text-blue-500 mr-2"></span> Products on Sale
+            </h3>
+            <div id="productCardsContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 px-4">
+                <p class="col-span-full text-center text-gray-500">Click 'Refresh Products' to load items...</p>
+            </div>
+        </section>
+
+        <section class="w-full py-2 bg-white flex flex-col md:flex-row gap-6">
+            <div class="flex-grow px-4">
+                <h3 class="text-xl font-semibold text-gray-700 mb-4 flex items-center">
+                    <span class="text-yellow-600 mr-2"></span> Order History
+                </h3>
+                <div id="orderHistoryContainer" class="space-y-4 max-h-[260px] overflow-auto">
+                    <p class="text-gray-500">No orders placed by this customer yet.</p>
+                </div>
+            </div>
+            <div class="w-full max-w-xs px-4 md:border-l mt-4 md:mt-0 border-gray-200 mx-auto">
+                <h4 class="text-lg font-medium mb-4">Cancel Pending Order</h4>
+                <div class="flex space-x-3 items-center">
+                    <input type="number" id="cancelOrderId" placeholder="Order ID to Cancel" class="shadow-sm sm:text-sm border-gray-300 rounded-md p-2 w-full">
+                    <button onclick="cancelOrder()"
+                            class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700">
+                        Confirm
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section class="w-full bg-gray-800 p-4 rounded-none shadow-inner max-h-28">
+            <label for="orderOutput" class="block text-sm font-medium text-gray-200 mb-2">API Response Log:</label>
+            <pre id="orderOutput" class="log-output text-green-400 text-sm overflow-auto"></pre>
+        </section>
+    </main>
+
+    <footer class="w-full bg-gray-50 border-t border-gray-300 p-4 flex justify-end space-x-4">
+        <button onclick="listProducts()"
+                class="inline-flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
+            Refresh Products
+        </button>
+        <button onclick="refreshOrders()"
+                class="inline-flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+            Refresh My Orders
+        </button>
+    </footer>
+</div>
+
+<script>
+	const API_BASE = '/api/customers'; // base url for customer related api endpoints
+	const output = document.getElementById('orderOutput'); // element to display api response log message
+	const productContainer = document.getElementById('productCardsContainer'); // container where product cards are rendered
+	const orderHistoryContainer = document.getElementById('orderHistoryContainer'); // container for rendering order history
+	const productSearchInput = document.getElementById('productSearch'); // input element for filtering products by description
+	let allProducts = []; // array to store all loaded products for filtering
+	
+	//get Customer Id selcted 
+	function getCustomerId() {
+	    return document.getElementById('customerId').value;
+	}
+	
+	// log messages to the api response log color red if error else green
+	function log(message, isError = false) {
+	    output.textContent = message;
+	    output.style.color = isError ? '#f87171' : '#4ade80';
+	}
+	
+	// handle fetch api response:
+	// if 204 no content, return status with message
+	// otherwise try to parse json and return data and status
+	async function handleResponse(response) {
+	    if (response.status === 204) {
+	        return { status: 204, data: { message: '204 NO CONTENT (Success)' } };
+	    }
+	    try {
+	        const data = await response.json();
+	        return { status: response.status, data: data };
+	    } catch (error) {
+	        return { status: response.status, data: { error: 'Failed to parse JSON response. Status: ' + response.status } };
+	    }
+	}
+	
+	// load customers from backend api and put in dropdown
+	// automatically select the first customer and trigger product loading
+	async function loadCustomers() {
+	    const url = `/api/customers`;
+	    const selectElement = document.getElementById('customerId');
+	    selectElement.disabled = true;
+	    try {
+	        const response = await fetch(url);
+	        const { status, data } = await handleResponse(response);
+
+	        if (status === 200 && data.length > 0) {
+				// populate dropdown options from customers
+	            selectElement.innerHTML = data.map(customer =>
+	                `<option value="${customer.customerId}">${customer.customerId} (${customer.name})</option>`
+	            ).join('');
+	            selectElement.disabled = false;// enable dropdown
+	            log(`[SUCCESS] Loaded ${data.length} customers.`, false);
+	        } else {
+	            selectElement.innerHTML = `<option value="">No Customers Found</option>`;
+	            log(`[ERROR] No customers found.`, true);
+	        }
+	    } catch (error) {
+	        selectElement.innerHTML = `<option value="">Error Loading Customers</option>`;
+	        log(`[FETCH ERROR] Failed to connect to REST service to load customers.`, true);
+	    }
+	}
+
+	function renderProducts(products) {
+	    if (!products || products.length === 0) {
+	        productContainer.innerHTML = '<p class="col-span-full text-center text-gray-500">No products found.</p>';
+	        return;
+	    }
+	    productContainer.innerHTML = products.map(product => `
+	        <div id="card-${product.id || product.productId}" class="product-card bg-white p-4 border border-gray-300 rounded-lg shadow-lg flex flex-col justify-between">
+	            <div>
+	                <h4 class="text-lg font-bold text-gray-900 mb-1">${product.description}</h4>
+	                <p class="text-sm text-gray-500">ID: ${product.id || product.productId}</p>
+	                <p class="text-2xl font-extrabold text-indigo-600 mt-2">AED ${(product.price ? (product.price + 5) : product.retailPrice).toFixed(2)}</p>
+	            </div>
+	            <div class="mt-4 flex items-center space-x-2">
+	                <input type="number" id="qty-${product.id || product.productId}" value="1" min="1" max="10"
+	                    class="w-16 shadow-sm sm:text-sm border-gray-300 rounded-md p-2 text-center">
+	                <button onclick="placeOrder('${product.id || product.productId}')"
+	                        class="flex-grow px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-500 hover:bg-blue-600">
+	                    Add to Cart
+	                </button>
+	            </div>
+	        </div>
+	    `).join('');
+	}
+
+	// filter products array based on search input and price sort selection
+	// sorts products by display price if sorting selected
+	function filterProducts() {
+	    const search = productSearchInput.value.toLowerCase();
+	    const sort = document.getElementById('priceSort').value;
+		// filter products by matching description text
+	    let filtered = allProducts.filter(product =>
+	        product.description.toLowerCase().includes(search)
+	    );
+		// calculate displayPrice as local price + 5 or fallback retailPrice
+	    filtered.forEach(p => p.displayPrice = p.price ? (p.price + 5) : p.retailPrice);
+		// sort asc or desc by displayPrice if requested
+	    if (sort === 'lowhigh') {
+	        filtered = filtered.sort((a, b) => a.displayPrice - b.displayPrice);
+	    }
+	    if (sort === 'highlow') {
+	        filtered = filtered.sort((a, b) => b.displayPrice - a.displayPrice);
+	    }
+	    renderProducts(filtered);//sorted produc
+	}
+	// fetch product list for selected customer and update product cards with filter options
+	async function listProducts() {
+	    const customerId = getCustomerId();
+	    if (!customerId) return log(`[WARNING] Customer ID not selected. Load customers first.`, true);
+
+	    log(`[INFO] Fetching products...`);
+	    const url = `${API_BASE}/products`;
+	    try {
+	        const response = await fetch(url);
+	        const { status, data } = await handleResponse(response);
+
+	        if (status === 200) {
+				// store loaded products, adding retailPrice for local price + 5 margin logic
+	            allProducts = data.map(product => ({
+	                ...product,
+	                retailPrice: product.price ? (product.price + 5) : product.retailPrice
+	            }));
+	            filterProducts();// apply search/sort and render
+	            log(`[SUCCESS] Status: 200 OK. Loaded ${data.length} products.`, false);
+	        } else {
+	            log(`[ERROR] Status: ${status}\nResponse:\n` + JSON.stringify(data, null, 2), true);
+	        }
+	    } catch (error) {
+	        log(`[FETCH ERROR] Failed to connect to REST service. Ensure application is running.`, true);
+	    }
+	}
+
+	// place an order for chosen product id and quantity for selected customer
+	async function placeOrder(productId) {
+	    const customerId = getCustomerId();
+	    const quantityInput = document.getElementById(`qty-${productId}`);
+	    const quantity = parseInt(quantityInput.value);
+
+	    if (!productId || quantity <= 0) {
+	        return log('[WARNING] Invalid quantity or Product ID.', true);
+	    }
+
+	    const url = `${API_BASE}/${customerId}/orders`;
+	    const orderData = { productId: productId, quantity: quantity };
+
+	    try {
+	        const response = await fetch(url, {
+	            method: 'POST',
+	            headers: { 'Content-Type': 'application/json' },
+	            body: JSON.stringify(orderData)
+	        });
+
+	        const { status, data } = await handleResponse(response);
+
+	        if (status === 201) {
+	            log(`[SUCCESS] Status: 201 CREATED. Order ID: ${data.orderId}`, false);
+	            viewOrders(); // refresh order list after placing order
+	        } else {
+	            log(`[ERROR] Status: ${status}\nResponse:\n` + JSON.stringify(data, null, 2), true);
+	        }
+	    } catch (error) {
+	        log(`[FETCH ERROR] Failed to connect to REST service. Ensure application is running.`, true);
+	    }
+	}
+	
+	// fetch and display past orders for selected customer
+	async function viewOrders() {
+	    const customerId = getCustomerId();
+	    if (!customerId) return;
+
+	    log(`[INFO] Fetching order history...`);
+	    const url = `${API_BASE}/${customerId}/orders`;
+	    try {
+	        const response = await fetch(url);
+	        const { status, data } = await handleResponse(response);
+
+	        if (status === 200) {
+	            renderOrders(data);
+	            log(`[SUCCESS] Status: 200 OK. Loaded ${data.length} orders.`, false);
+	        } else {
+	            log(`[ERROR] Status: ${status}\nResponse:\n` + JSON.stringify(data, null, 2), true);
+	        }
+	    } catch (error) {
+	        log(`[FETCH ERROR] Failed to connect to REST service. Ensure application is running.`, true);
+	    }
+	}
+	// render order history entries
+	function renderOrders(orders) {
+	    if (orders.length === 0) {
+	        orderHistoryContainer.innerHTML = '<p class="text-gray-500">No orders placed by this customer yet.</p>';
+	        return;
+	    }
+
+	    orderHistoryContainer.innerHTML = orders.map(order => `
+	        <div class="p-4 rounded-lg border ${order.status === 'Shipped' ? 'bg-green-50 border-green-300' :
+	                                            order.status === 'Cancelled' ? 'bg-red-50 border-red-300' : 'bg-blue-50 border-blue-300'}">
+	            <div class="grid grid-cols-2 md:grid-cols-4 text-sm gap-2">
+	                <p><strong>Order ID:</strong> ${order.orderId}</p>
+	                <p><strong>Product ID:</strong> ${order.productId}</p>
+	                <p><strong>Qty:</strong> ${order.quantity}</p>
+	                <p><strong>Total:</strong> AED ${order.priceAtOrder.toFixed(2)}</p>
+	                <p class="col-span-2 md:col-span-4">
+	                    <span class="font-bold text-base ${order.status === 'Shipped' ? 'text-green-700' : order.status === 'Cancelled' ? 'text-red-700' : 'text-blue-700'}">
+	                        Status: ${order.status}
+	                    </span>
+	                    ${order.status === 'Pending' ? `<button onclick="document.getElementById('cancelOrderId').value = ${order.orderId}" 
+	                                                            class="ml-4 text-xs text-red-600 hover:underline">
+	                                                        Quick Cancel
+	                                                    </button>` : ''}
+	                </p>
+	            </div>
+	        </div>
+	    `).join('');
+	}
+	// fetch and render only available orders (excluding out of stock) for selected customer
+	async function refreshOrders() {
+	    const customerId = getCustomerId();
+	    if (!customerId) return;
+
+	    log(`[INFO] Fetching available orders...`);
+	    const url = `${API_BASE}/${customerId}/orders/refresh`;
+	    try {
+	        const response = await fetch(url);
+	        const { status, data } = await handleResponse(response);
+
+	        if (status === 200) {
+	            renderOrders(data);
+	            log(`[SUCCESS] Status: 200 OK. Loaded ${data.length} available orders.`, false);
+	        } else {
+	            log(`[ERROR] Status: ${status}\nResponse:\n` + JSON.stringify(data, null, 2), true);
+	        }
+	    } catch (error) {
+	        log(`[FETCH ERROR] Failed to connect to REST service. Ensure application is running.`, true);
+	    }
+	}
+	// cancel order by id for selected customer
+	async function cancelOrder() {
+	    const customerId = getCustomerId();
+	    const orderId = document.getElementById('cancelOrderId').value;
+
+	    if (!orderId) {
+	        return log('[WARNING] Please enter an Order ID to cancel.', true);
+	    }
+
+	    const url = `${API_BASE}/${customerId}/orders/${orderId}`;
+	    try {
+	        const response = await fetch(url, { method: 'DELETE' });
+	        const { status, data } = await handleResponse(response);
+
+	        if (status === 204) {
+	            log(`[SUCCESS] Status: 204 NO CONTENT.\nOrder ${orderId} cancelled successfully.`, false);
+				viewOrders(); // refresh order list after cancellation
+	        } else {
+	            log(`[ERROR] Status: ${status}\nResponse:\n` + JSON.stringify(data, null, 2), true);
+	        }
+	    } catch (error) {
+	        log(`[FETCH ERROR] Failed to connect to REST service. Ensure application is running.`, true);
+	    }
+	}
+	async function loadCustomers() {
+	    const url = `/api/customers`;
+	    const selectElement = document.getElementById('customerId');
+	    selectElement.disabled = true;
+	    try {
+	        const response = await fetch(url);
+	        const { status, data } = await handleResponse(response);
+
+	        if (status === 200 && data.length > 0) {
+	            selectElement.innerHTML = data.map(customer =>
+	                `<option value="${customer.customerId}">${customer.customerId} (${customer.name})</option>`
+	            ).join('');
+	            selectElement.disabled = false;
+	            	            
+	            // Force selection of the first loaded customer
+	            selectElement.value = data[0].customerId;
+	            
+	            // Trigger initial data load now that a customer is selected
+	            listProducts(); // Loads products for the selected customer
+	            viewOrders();   // Loads orders for the selected customer
+
+	            log(`[SUCCESS] Loaded ${data.length} customers.`, false);
+	        } else {
+	            selectElement.innerHTML = `<option value="">No Customers Found</option>`;
+	            log(`[ERROR] No customers found.`, true);
+	        }
+	    } catch (error) {
+	        selectElement.innerHTML = `<option value="">Error Loading Customers</option>`;
+	        log(`[FETCH ERROR] Failed to connect to REST service to load customers.`, true);
+	    }
+	}
+
+	async function loadCustomersAndInit() {
+	    await loadCustomers();
+	}
+
+	window.onload = loadCustomersAndInit;
+</script>
+
+</body>
+</html>
